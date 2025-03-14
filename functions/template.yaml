@@ -1,0 +1,55 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  AWS SAM
+
+Resources:
+  MyAuthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Timeout: 5 #limit
+      MemorySize: 128 #limit
+      CodeUri: check-auth/
+      Handler: index.Handler
+      Role: !GetAtt MyLambdaFunctionRole.Arn 
+      Runtime: nodejs20.x
+      AutoPublishAlias: live
+      Architectures:
+        - x86_64
+
+  MyCallbackFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Timeout: 5 #limit
+      MemorySize: 128 #limit
+      CodeUri: handle-callback/
+      Handler: index.Handler
+      Role: !GetAtt MyLambdaFunctionRole.Arn 
+      Runtime: nodejs20.x
+      AutoPublishAlias: live
+      Architectures:
+        - x86_64
+
+  MyLambdaFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - 'lambda.amazonaws.com'
+                - 'edgelambda.amazonaws.com'
+            Action:
+              - 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+
+Outputs:
+  AuthArn:
+    Description: Auth Lambda edge ARN
+    Value: !Ref MyAuthFunction.Version
+  CallbackArn:
+    Description: Callback Lambda edge ARN
+    Value: !Ref MyCallbackFunction.Version

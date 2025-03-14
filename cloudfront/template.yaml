@@ -1,0 +1,98 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  SAM
+
+Resources:
+  MyBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: "myspa123"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  MyCloudFrontOriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub "OAC for ${MyBucket}"
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  MyCloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    DependsOn:
+      - MyBucket
+    Properties:
+      DistributionConfig:
+        Origins:
+          - DomainName: !GetAtt MyBucket.DomainName
+            Id: !Sub "origin-${MyBucket}"
+            S3OriginConfig:
+              OriginAccessIdentity: ""
+            OriginAccessControlId: !GetAtt MyCloudFrontOriginAccessControl.Id
+        Enabled: "true"
+        PriceClass: "PriceClass_200"
+        IPV6Enabled : "false"
+        DefaultRootObject: index.html
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+        DefaultCacheBehavior:
+          AllowedMethods:
+            - DELETE
+            - GET
+            - HEAD
+            - OPTIONS
+            - PATCH
+            - POST
+            - PUT
+          CachedMethods :
+            - GET
+            - HEAD
+          Compress: true
+          TargetOriginId: !Sub "origin-${MyBucket}"
+          ForwardedValues:
+            QueryString: false
+            Cookies:
+              Forward: none
+          ViewerProtocolPolicy: redirect-to-https
+          LambdaFunctionAssociations: 
+            - EventType: viewer-request
+              LambdaFunctionARN: <MY_CHECK_AUTH_FUNCTION_ARN>
+        CacheBehaviors:
+          - PathPattern: /callback
+            TargetOriginId: !Sub "origin-${MyBucket}"
+            ViewerProtocolPolicy: redirect-to-https
+            ForwardedValues:
+              QueryString: false
+              Cookies:
+                Forward: none
+            LambdaFunctionAssociations:
+              - EventType: viewer-request
+                LambdaFunctionARN: <MY_HANDLE_CALLBACK_FUNCTION_ARN>
+
+  MyBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref MyBucket
+      PolicyDocument:
+        Version: 2008-10-17
+        Statement:
+          - Action:
+            - 's3:GetObject'
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Resource: !Sub "${MyBucket.Arn}/*"
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${MyCloudFrontDistribution.Id}"
+
+Outputs:
+  CloudFrontURL:
+    Description: URL of CloudFront distribution.
+    Value: !GetAtt MyCloudFrontDistribution.DomainName
