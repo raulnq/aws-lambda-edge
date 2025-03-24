@@ -2,8 +2,8 @@ import crypto from 'crypto';
 import jwt  from 'jsonwebtoken';
 import jwksClient  from 'jwks-rsa';
 
-const TENANT_ID = '77f43f1b-5708-46dd-92a2-5f99f19e9b1f';
-const CLIENT_ID =  '795eb294-1fb1-4454-9fa0-5563a03880ac';
+const TENANT_ID = '<MY_TENANT_ID>';
+const CLIENT_ID =  '<MY_CLIENT_ID>';
 
 
 export const Handler = async (event, context) => {
